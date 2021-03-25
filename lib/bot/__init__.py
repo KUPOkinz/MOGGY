@@ -4,6 +4,7 @@ from discord import Intents
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from discord import Embed, File
 from discord.ext.commands import Bot as BotBase
+from discord.ext.commands import CommandNotFound
 
 PREFIX = "*" # the key used to control the bot.
 OWNER_IDS = [396766040182358017] # the server owner's ID.
@@ -36,6 +37,24 @@ class Bot(BotBase):
 
 	async def on_disconnect(self): # when the bot is disconnecting.
 		print ("bot disconnecting...") # this message displays in the terminal when the bot is disconnecting.
+
+	async def on_error(self, err, *args, **kwargs): # when the bot has encountered an error.
+		if err == "on_command_error":
+			await args[0].send("something went wrong...") # this message displays in the terminal when the bot has encountered an error.
+
+		channel = self.get_channel(824271658877059092) # the ID of the channel to receive the error message.
+		await channel.send("An error has occured.") # this message will appear in the server when the bot has encountered an error.
+		raise
+
+	async def on_command_error(self, ctx, exc):
+		if isinstance(exc, CommandNotFound):
+			pass
+
+		elif hasattr(exc, "original"):
+			raise exc.original
+
+		else:
+			raise exc
 
 	async def on_ready(self): # when the bot is ready.
 		if not self.ready:
