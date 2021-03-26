@@ -1,15 +1,39 @@
+from random import choice, randint
+from typing import Optional
+
+from discord import Member
 from discord.ext.commands import Cog
+from discord.ext.commands import command
 
 
 class Fun(Cog):
 	def __init__(self, bot):
 		self.bot = bot
 
+	@command(name="hello", aliases=["hey", "hi"]) # [hello/hey/hi] replies with a welcome message.
+	async def say_hello(self, ctx):
+		await ctx.send(f"{choice(('Hello', 'Hey', 'Hi'))} {ctx.author.mention}!") # appears in the server as a response to the [hello/hey/hi] command. 
+
+	@command(name="dice", aliases=["roll"]) # [dice/roll] [#] [d] [#] simulates dice rolling based on the values entered.  
+	async def roll_dice(self, ctx, die_string: str):
+		dice, value = (int(term) for term in die_string.split("d"))
+		rolls = [randint(1, value) for i in range(dice)]
+		await ctx.send(" + ".join([str(r) for r in rolls]) + f" = {sum(rolls)}") # appears in the server as a response the the [dice/roll] command.
+
+	@command(name="slap", aliases=["hit"]) # [slap/hit] [user] <reason> slaps the mentioned member with an optional reason.
+	async def slap_member(self, ctx, member: Member, *, reason: Optional[str] = "for no reason"): # appears in the server as a respose to the [slap/hit] command when no reason is provided.
+		await ctx.send(f"{ctx.author.mention} slapped {member.mention} {reason}!") # appears in the server as a response to the [slap/hit] command when a reason is provided.
+	
+
+	@command(name="echo", aliases=["say", "mimic"]) # [echo/say/mimic] [message] repeats the sent message and then deletes the user post.
+	async def echo_message(self, ctx, *, message):
+		await ctx.message.delete()
+		await ctx.send(message)
+
 	@Cog.listener()
 	async def on_ready(self):
 		if not self.bot.ready:
 			self.bot.cogs_ready.ready_up("fun")
-		# print("fun cog ready") # this message displays in the terminal when the Fun Cog is ready.
 
 
 def setup(bot):
