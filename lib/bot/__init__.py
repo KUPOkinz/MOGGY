@@ -5,15 +5,17 @@ from glob import glob
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from discord import Embed, File, Intents
+from discord.errors import HTTPException, Forbidden
 from discord.ext.commands import Bot as BotBase
 from discord.ext.commands import Context
-from discord.ext.commands import CommandNotFound
+from discord.ext.commands import (CommandNotFound, BadArgument, MissingRequiredArgument)
 
 from ..db import db
 
 PREFIX = "*" # the key used to control the bot.
 OWNER_IDS = [396766040182358017] # the server owner's ID.
-COGS = [path.split("\\")[-1][:-3] for path in glob("./lib/cogs/*.py")]
+COGS = [path.split("\\")[-1][:-3] for path in glob("./lib/cogs/*.py")] # the location of the Cogs folder.
+IGNORE_EXCEPTIONS = (CommandNotFound, BadArgument)
 
 
 class Ready(object):
@@ -58,7 +60,7 @@ class Bot(BotBase):
 		print("running setup...") # displays in the terminal when the start-up process begins.
 		self.setup()
 
-		with open("./lib/bot/token.token", "r", encoding="utf-8") as tf: # the token of the bot. this must be manually added.
+		with open("./lib/bot/token.token", "r", encoding="utf-8") as tf: # the location of the bot token. this must be added and saved as "token.token".
 			self.TOKEN = tf.read()
 
 		print("running bot...") # displays in the terminal when the bot is running.
@@ -67,12 +69,12 @@ class Bot(BotBase):
 	async def process_commands(self, message):
 		ctx =await self.get_context(message, cls=Context)
 			
-		if ctx.command is not None and ctx.guild is not None:
-			if self.ready:
-				await self.invoke(ctx)
+		if self.ready:	
+			if ctx.command is not None and ctx.guild is not None:
+					await self.invoke(ctx)
 
 		else:
-			await ctx.send("I'm not ready to receive commands.")
+			await ctx.send("I'm not ready to receive commands.") # appears in the server when an action is performed and the bot is not fully ready or online.
 
 	async def timed_message(self): # this is a timed message. timing can be adjusted using the "on_ready" function.
 		await self.stdout.send("I am a timed notification.") # appears in the server when the timed message is sent.
@@ -91,14 +93,23 @@ class Bot(BotBase):
 		raise
 
 	async def on_command_error(self, ctx, exc):
-		if isinstance(exc, CommandNotFound):
+		if any([isinstance(exc, error) for error in IGNORE_EXCEPTIONS]):
 			pass
 
-		# elif hasattr(exc, "original"):
-		# 	raise exc.original
+		elif isinstance(exc, MissingRequiredArgument):
+			await ctx.send("One or more required arguments are missing.") # appears in the server when missing a required argument for a command.
+
+		elif isinstance(exc.original, HTTPException):
+			await ctx.send("Unable to send message.") # appears in the server when the bot cannot send a message.
+
+		elif isinstance(exc.original, Forbidden):
+			await ctx.send("I do not have permission to do that.") # appears in the server when the bot does not have permissions to perform the task.
+		
+		elif hasattr(exc, "original"):
+			raise exc.original
 
 		else:
-			raise exc
+			raise exc.original
 
 	async def on_ready(self): # when the bot is ready and online.
 		if not self.ready:
